@@ -40,6 +40,7 @@ print(dataset.describe())
 print(dataset.head())
 print(dataset.dtypes)
 
+# TODO: Make this automattic, remove all str columns + label and FILENAME one
 columns_to_drop = ['FILENAME', 'Domain', 'URL', 'TLD', 'Title', 'label']
 
 if args.url_only:
@@ -92,7 +93,7 @@ print('\nValue counts (normalized):')
 print(y.value_counts(normalize=True))
 
 print('Extracting samples...')
-X_train, X_test, y_train, y_test = train_test_split(X,y,test_size=0.2,random_state=42)
+X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42, stratify=y)
 
 print(f"\nTraining samples: {len(y_train)}")
 print(f"Testing samples: {len(y_test)}")
@@ -120,6 +121,7 @@ models = {
         ("classifier", LogisticRegression(
             max_iter=2000,
             random_state=42,
+            class_weight="balanced"
         ))
     ])
 }
@@ -187,6 +189,7 @@ for name, model in models.items():
 
     model_path = f"model/test/{name}.pkl"
 
+    os.makedirs("model/test", exist_ok=True)
     joblib.dump(model, model_path)
 
     file_size_mb = os.path.getsize(model_path) / (1024 * 1024)
@@ -218,5 +221,6 @@ summary_df = summary_df.sort_values(
     ascending=False
 )
 
+# TODO: Make this persist on drive, something like a .csv file for future references
 print("\n=== Benchmark Summary ===")
 print(summary_df.round(4))
