@@ -40,8 +40,19 @@ print(dataset.describe())
 print(dataset.head())
 print(dataset.dtypes)
 
-# TODO: Make this automattic, remove all str columns + label and FILENAME one
-columns_to_drop = ['FILENAME', 'Domain', 'URL', 'TLD', 'Title', 'label']
+# Label is handled separately
+target_column = "label"
+
+# Automatically find all non-numeric columns
+non_numeric_columns = dataset.select_dtypes(
+    exclude=["number", "bool"]
+).columns.tolist()
+
+# Remove label from drop list if present
+columns_to_drop = [
+    col for col in non_numeric_columns
+    if col != target_column
+]
 
 if args.url_only:
     print("Using URL-only features")
@@ -79,8 +90,9 @@ if args.url_only:
 
 
 dataset["HyphenCount"] = dataset["URL"].str.count("-")
-X = dataset.drop(columns_to_drop, axis=1)
-y = dataset['label']
+X = dataset.drop(columns=columns_to_drop)
+X = X.drop(columns=[target_column])
+y = dataset[target_column]
 
 print(f"\nDataset shape: {dataset.shape}")
 
@@ -221,6 +233,21 @@ summary_df = summary_df.sort_values(
     ascending=False
 )
 
-# TODO: Make this persist on drive, something like a .csv file for future references
+os.makedirs("benchmarks", exist_ok=True)
+
+timestamp = time.strftime("%Y%m%d-%H%M%S")
+
+benchmark_path = (
+    f"benchmarks/benchmark-{timestamp}"
+    f"{'-url-only' if args.url_only else ''}.csv"
+)
+
+summary_df.to_csv(
+    benchmark_path,
+    index=False
+)
+
 print("\n=== Benchmark Summary ===")
 print(summary_df.round(4))
+
+print(f"\nBenchmark saved to: {benchmark_path}")
