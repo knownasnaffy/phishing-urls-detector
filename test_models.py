@@ -1,5 +1,8 @@
 # Dataset source: https://archive-beta.ics.uci.edu/dataset/967/phiusiil+phishing+url+dataset/files?path=PhiUSIIL_Phishing_URL_Dataset.csv
 
+import os
+import time
+
 import pandas as pd
 import joblib
 from sklearn.ensemble import (
@@ -8,8 +11,27 @@ from sklearn.ensemble import (
     GradientBoostingClassifier
 )
 from sklearn.linear_model import LogisticRegression
-from sklearn.metrics import accuracy_score, classification_report, confusion_matrix
+from sklearn.metrics import (
+    accuracy_score,
+    classification_report,
+    confusion_matrix,
+    precision_score,
+    recall_score,
+    f1_score
+)
 from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.pipeline import Pipeline
+import argparse
+
+parser = argparse.ArgumentParser()
+parser.add_argument(
+    "--url-only",
+    action="store_true",
+    help="Use only URL-based features"
+)
+
+args = parser.parse_args()
 
 print('Reading dataset file...')
 dataset = pd.read_csv('./dataset.csv', sep=',', low_memory=False)
@@ -18,8 +40,45 @@ print(dataset.describe())
 print(dataset.head())
 print(dataset.dtypes)
 
+columns_to_drop = ['FILENAME', 'Domain', 'URL', 'TLD', 'Title', 'label']
+
+if args.url_only:
+    print("Using URL-only features")
+
+    columns_to_drop.extend([
+        "LineOfCode",
+        "LargestLineLength",
+        "HasTitle",
+        "DomainTitleMatchScore",
+        "URLTitleMatchScore",
+        "HasFavicon",
+        "Robots",
+        "IsResponsive",
+        "NoOfURLRedirect",
+        "NoOfSelfRedirect",
+        "HasDescription",
+        "NoOfPopup",
+        "NoOfiFrame",
+        "HasExternalFormSubmit",
+        "HasSocialNet",
+        "HasSubmitButton",
+        "HasHiddenFields",
+        "HasPasswordField",
+        "Bank",
+        "Pay",
+        "Crypto",
+        "HasCopyrightInfo",
+        "NoOfImage",
+        "NoOfCSS",
+        "NoOfJS",
+        "NoOfSelfRef",
+        "NoOfEmptyRef",
+        "NoOfExternalRef",
+    ])
+
+
 dataset["HyphenCount"] = dataset["URL"].str.count("-")
-X = dataset.drop(['FILENAME', 'Domain', 'URL', 'TLD', 'Title', 'label'], axis=1)
+X = dataset.drop(columns_to_drop, axis=1)
 y = dataset['label']
 
 print(f"\nDataset shape: {dataset.shape}")
@@ -44,52 +103,104 @@ models = {
         random_state=42,
         n_jobs=-1
     ),
+
     "ExtraTrees": ExtraTreesClassifier(
         n_estimators=100,
         random_state=42,
         n_jobs=-1
     ),
+
     "GradientBoosting": GradientBoostingClassifier(
         n_estimators=100,
         random_state=42
-    )
+    ),
+
+    "LogisticRegression": Pipeline([
+        ("scaler", StandardScaler()),
+        ("classifier", LogisticRegression(
+            max_iter=2000,
+            random_state=42,
+        ))
+    ])
 }
 
 results = {}
+benchmark_results = []
 
 for name, model in models.items():
     print(f"\n====================\n{name}\n====================")
     print("\nTraining...")
 
+    start_train = time.perf_counter()
     model.fit(X_train, y_train)
+    train_time = time.perf_counter() - start_train
 
+    start_predict = time.perf_counter()
     y_pred = model.predict(X_test)
+    predict_time = time.perf_counter() - start_predict
 
     accuracy = accuracy_score(y_test, y_pred)
+    precision = precision_score(y_test, y_pred)
+    recall = recall_score(y_test, y_pred)
+    f1 = f1_score(y_test, y_pred)
 
     results[name] = accuracy
 
     print(f"\nAccuracy: {accuracy:.4f}")
     print(classification_report(y_test, y_pred))
 
-    importance_df = pd.DataFrame({
-        "feature": X.columns,
-        "importance": model.feature_importances_
+    if hasattr(model, "feature_importances_"):
+        importance_df = pd.DataFrame({
+            "feature": X.columns,
+            "importance": model.feature_importances_
         })
 
-    importance_df = importance_df.sort_values(
-        by="importance",
-        ascending=False
+        importance_df = importance_df.sort_values(
+            by="importance",
+            ascending=False
         )
 
-    print('\nFeatures:')
-    print(importance_df)
+        print("\nTop Features:")
+        print(importance_df.head(20))
+
+    elif name == "LogisticRegression":
+        coeffs = model.named_steps["classifier"].coef_[0]
+
+        coef_df = pd.DataFrame({
+            "feature": X.columns,
+            "coefficient": coeffs
+        })
+
+        coef_df["abs_coef"] = coef_df["coefficient"].abs()
+
+        coef_df = coef_df.sort_values(
+            by="abs_coef",
+            ascending=False
+        )
+
+        print("\nTop Coefficients:")
+        print(coef_df.head(20))
 
     print('\nConfusion matrix:')
     cm = confusion_matrix(y_test, y_pred)
     print(cm)
 
-    joblib.dump(model, f"model/test/{name}.pkl")
+    model_path = f"model/test/{name}.pkl"
+
+    joblib.dump(model, model_path)
+
+    file_size_mb = os.path.getsize(model_path) / (1024 * 1024)
+
+    benchmark_results.append({
+        "Model": name,
+        "Accuracy": accuracy,
+        "Precision": precision,
+        "Recall": recall,
+        "F1": f1,
+        "Train Time (s)": train_time,
+        "Predict Time (s)": predict_time,
+        "File Size (MB)": file_size_mb
+    })
 
 print("\n=== Summary ===")
 
@@ -100,3 +211,12 @@ for name, accuracy in sorted(
 ):
     print(f"{name:<20} {accuracy:.4f}")
 
+summary_df = pd.DataFrame(benchmark_results)
+
+summary_df = summary_df.sort_values(
+    by="F1",
+    ascending=False
+)
+
+print("\n=== Benchmark Summary ===")
+print(summary_df.round(4))
