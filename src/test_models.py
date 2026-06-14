@@ -24,6 +24,8 @@ from sklearn.preprocessing import StandardScaler
 from sklearn.pipeline import Pipeline
 import argparse
 
+from columns import webpage_columns, identifier_column
+
 parser = argparse.ArgumentParser()
 parser.add_argument(
     "--url-only",
@@ -34,7 +36,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 print('Reading dataset file...')
-dataset = pd.read_csv('./dataset.csv', sep=',', low_memory=False)
+dataset = pd.read_csv('../datasets/dataset.csv', sep=',', low_memory=False)
 
 print(dataset.describe())
 print(dataset.head())
@@ -57,36 +59,7 @@ columns_to_drop = [
 if args.url_only:
     print("Using URL-only features")
 
-    columns_to_drop.extend([
-        "LineOfCode",
-        "LargestLineLength",
-        "HasTitle",
-        "DomainTitleMatchScore",
-        "URLTitleMatchScore",
-        "HasFavicon",
-        "Robots",
-        "IsResponsive",
-        "NoOfURLRedirect",
-        "NoOfSelfRedirect",
-        "HasDescription",
-        "NoOfPopup",
-        "NoOfiFrame",
-        "HasExternalFormSubmit",
-        "HasSocialNet",
-        "HasSubmitButton",
-        "HasHiddenFields",
-        "HasPasswordField",
-        "Bank",
-        "Pay",
-        "Crypto",
-        "HasCopyrightInfo",
-        "NoOfImage",
-        "NoOfCSS",
-        "NoOfJS",
-        "NoOfSelfRef",
-        "NoOfEmptyRef",
-        "NoOfExternalRef",
-    ])
+    columns_to_drop.extend(webpage_columns)
 
 
 dataset["HyphenCount"] = dataset["URL"].str.count("-")

@@ -4,6 +4,8 @@
 
 Deciding which model to use in production and various other things.
 
+> These benchmarks were taken with previous dataset from [this dataset](#Phishing_and_Legitimate_URL_combo). Checkout [this commit](https://github.com/knownasnaffy/phishing-urls-detector/tree/360c6fa) for a more complete version. New stuff is being prepared from scratch rn.
+
 ### Full Suite: URL + Webpage
 
 #### Benchmark Results
@@ -57,6 +59,16 @@ Compared to the full-feature benchmark:
 
 The most interesting result here is that **removing non-URL features had almost no impact on performance**. That suggests URL-derived features alone are highly informative and may be sufficient for a lightweight phishing detector. This is useful if we want a model that can classify URLs immediately without fetching webpage content, DNS data, titles, or other external information.
 
-## Dataset Citation
+## Credits and Citations
+
+### Phishing and Legitimate URL combo `datasets/dataset.csv`
 
 Prasad, A., & Chandra, S. (2023). PhiUSIIL: A diverse security profile empowered phishing URL detection framework based on similarity index and incremental learning. Computers & Security, 103545. doi: https://doi.org/10.1016/j.cose.2023.103545
+
+### Legitimate URLs list from Tranco `datasets/legitimate.csv`
+
+Victor Le Pochat, Tom Van Goethem, Samaneh Tajalizadehkhoob, Maciej Korczyński, and Wouter Joosen. 2019. "Tranco: A Research-Oriented Top Sites Ranking Hardened Against Manipulation," Proceedings of the 26th Annual Network and Distributed System Security Symposium (NDSS 2019). https://doi.org/10.14722/ndss.2019.23386
+
+### Phishing URLs from PhishTank `datasets/phishing.csv`
+
+https://phishtank.org/
