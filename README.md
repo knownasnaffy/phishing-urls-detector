@@ -56,3 +56,7 @@ Compared to the full-feature benchmark:
 | 4    | ExtraTrees         | Similar performance but largest model size and slower inference                         |
 
 The most interesting result here is that **removing non-URL features had almost no impact on performance**. That suggests URL-derived features alone are highly informative and may be sufficient for a lightweight phishing detector. This is useful if we want a model that can classify URLs immediately without fetching webpage content, DNS data, titles, or other external information.
+
+## Dataset Citation
+
+Prasad, A., & Chandra, S. (2023). PhiUSIIL: A diverse security profile empowered phishing URL detection framework based on similarity index and incremental learning. Computers & Security, 103545. doi: https://doi.org/10.1016/j.cose.2023.103545
