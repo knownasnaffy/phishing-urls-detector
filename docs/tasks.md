@@ -12,9 +12,9 @@
 
 ## Phase 2: Model Training (`src/train_model.py`)
 
-- [ ] Load `datasets/features.csv` and split 80/20 train/test with stratification (fixed `random_state`)
-- [ ] Train a `LogisticRegression` pipeline (StandardScaler + classifier, `class_weight='balanced'`)
-- [ ] Save trained model to `model/model.pkl`
+- [x] Load `datasets/features.csv` and split 80/20 train/test with stratification (fixed `random_state`)
+- [x] Train a `LogisticRegression` pipeline (StandardScaler + classifier, `class_weight='balanced'`)
+- [x] Save trained model to `model/model.pkl`
 
 ## Phase 3: Benchmarking (`src/test_models.py`)
 

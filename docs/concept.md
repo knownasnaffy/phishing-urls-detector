@@ -58,6 +58,7 @@ Derived by stripping out the webpage columns and `URLSimilarityIndex` (requires 
 | `CharContinuationRate` | Ratio of max run-length of any single character to URLLength |
 | `TLDLegitimateProb` | Probability score of the TLD being benign (precomputed lookup table from training data) |
 | `URLCharProb` | Average per-character probability based on character frequency in legitimate URLs |
+| `TopDomainRank` | Rank of the domain in the Tranco top-1M list; 0 if not present |
 
 Note: `TLD` (the raw TLD string) is dropped in favour of `TLDLegitimateProb` to avoid high-cardinality categorical encoding. `URLSimilarityIndex` is excluded entirely since it requires comparing against a reference corpus at inference time.
 
