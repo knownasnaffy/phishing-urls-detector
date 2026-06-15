@@ -68,37 +68,60 @@ Note: `TLD` (the raw TLD string) is dropped in favour of `TLDLegitimateProb` to 
 
 ### Step 1: `src/prepare_dataset.py`
 
-- Load `legitimate.csv` (no header), prepend `http://` to each domain to form a URL, label = 0.
-- Load `phishing.csv`, use the `url` column, label = 1.
+- Load PhiUSIIL `datasets/dataset.csv`, use `URL` column. Label=0 rows → legitimate, label=1 rows → phishing.
+- Load PhishTank `datasets/phishing.csv`, use `url` column → phishing. Deduplicate against PhiUSIIL phishing set.
 - Extract the features listed above from every URL.
+- Compute `TLDLegitimateProb` and `URLCharProb` lookup tables from legitimate URLs; save to `datasets/tld_probs.csv` and `datasets/char_probs.csv`.
+- Load Tranco list (`datasets/legitimate.csv`) as a rank lookup; save compact dict to `datasets/tranco_map.pkl`.
 - Output: `datasets/features.csv` with one row per URL and a `label` column.
 
 ### Step 2: `src/train_model.py`
 
-- Load `datasets/features.csv`.
-- Split 80/20 train/test with stratification.
-- Train a `LogisticRegression` pipeline (StandardScaler + classifier) with `class_weight='balanced'`.
+- Load `datasets/features.csv`, split 80/20 train/test with stratification.
+- Train RandomForest (`class_weight='balanced'`).
 - Save model to `model/model.pkl`.
-- Save benchmark metrics to `benchmarks/`.
+- Save feature column order to `model/features.pkl`.
 
 ### Step 3: `src/test_models.py`
 
 - Same split as above.
-- Train and evaluate all four models: LogisticRegression, RandomForest, ExtraTrees, GradientBoosting.
-- All use `class_weight='balanced'`.
+- Train and evaluate LogisticRegression, RandomForest, ExtraTrees, GradientBoosting — all with `class_weight='balanced'`.
 - Save benchmark CSV to `benchmarks/`.
+
+### Step 4: `src/features.py` (inference)
+
+- Loads lookup artifacts once at import (`tld_probs.csv`, `char_probs.csv`, `tranco_map.pkl`).
+- `extract_features(url)` — pure URL string parsing.
+- `url_to_feature_row(url)` — applies lookups, returns a single-row DataFrame with columns in `model/features.pkl` order.
+
+### Step 5: `src/predict.py` (shared prediction helper)
+
+- Loads `model/model.pkl` and `model/features.pkl` once at import.
+- `predict(url) -> dict` — returns `{"label": str, "confidence": float, "features": dict}`.
+  - `label`: `"Phishing"` or `"Legitimate"`
+  - `confidence`: `predict_proba` probability of the predicted class
+
+### Step 6: `src/cli.py`
+
+- Takes one URL as a CLI argument.
+- Calls `predict(url)`, prints a one-line verdict with confidence.
+
+### Step 7: `src/streamlit.py`
+
+- Single-column layout: URL input → "Check" button → result card (verdict + confidence).
+- Expandable section shows the 22 extracted features.
 
 ---
 
 ## Model Selection Rationale
 
-Based on the prior benchmark (PhiUSIIL dataset, URL-only features):
+Benchmarked on the combined PhiUSIIL + PhishTank dataset (URL-only features):
 
 | Rank | Model | Reason |
 |------|-------|--------|
-| 1 | LogisticRegression | Fastest training and inference, smallest size, near-identical F1 to tree models |
-| 2 | RandomForest | Best accuracy among tree models with reasonable training time |
-| 3 | GradientBoosting | Marginally higher scores but 53x slower to train |
-| 4 | ExtraTrees | Similar to RandomForest but largest file size |
+| 1 | **RandomForest** | Best accuracy (0.9357) and F1 (0.9510); reasonable size (235 MB) |
+| 2 | ExtraTrees | Slightly lower F1, 2.5× larger model file |
+| 3 | GradientBoosting | Lower scores, 4× slower to train |
+| 4 | LogisticRegression | ~6 F1 points behind tree models on this dataset |
 
-Expected deployment model: LogisticRegression, unless the new dataset produces a meaningful accuracy gap favouring a tree model.
+Deployment model: **RandomForest**. LogisticRegression was the best choice on the old PhiUSIIL-only dataset (near-perfect scores, tiny size), but the combined dataset is harder and the 6-point F1 gap justifies the larger model.

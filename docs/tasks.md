@@ -1,30 +1,10 @@
 # Tasks
 
-## Phase 1: Dataset Preparation (`src/prepare_dataset.py`)
+## Phase 5: Inference Layer
 
-- [x] Load legitimate URLs from PhiUSIIL (`datasets/dataset.csv`, `label=0` rows, `URL` column)
-- [x] Load phishing URLs from PhiUSIIL (`label=1` rows) and PhishTank (`datasets/phishing.csv`, `url` column); deduplicate by URL string
-- [x] Extract all URL-only features (see `docs/concept.md` feature table) from every URL
-- [x] Compute `TLDLegitimateProb` lookup table from legitimate training URLs; save to `datasets/tld_probs.csv`
-- [x] Compute `URLCharProb` lookup table from legitimate training URLs; save to `datasets/char_probs.csv`
-- [x] Load Tranco list (`datasets/legitimate.csv`) as a rank lookup and compute `TopDomainRank` per URL
-- [x] Write final feature matrix + `label` column to `datasets/features.csv`
-
-## Phase 2: Model Training (`src/train_model.py`)
-
-- [x] Load `datasets/features.csv` and split 80/20 train/test with stratification (fixed `random_state`)
-- [x] Train a `LogisticRegression` pipeline (StandardScaler + classifier, `class_weight='balanced'`)
-- [x] Save trained model to `model/model.pkl`
-
-## Phase 3: Benchmarking (`src/test_models.py`)
-
-- [x] Reuse the same train/test split (same `random_state`) as Phase 2
-- [x] Train and evaluate LogisticRegression, RandomForest, ExtraTrees, and GradientBoosting (all with `class_weight='balanced'`)
-- [x] Record accuracy, precision, recall, F1, train time, predict time, and model file size
-- [x] Save benchmark results to `benchmarks/`
-
-## Phase 4: Evaluation
-
-- [x] Review benchmark CSV and compare models
-- [x] Confirm LogisticRegression as deployment model, or document reason for switching
-- [x] Update `README.md` with new benchmark tables and dataset composition notes
+- [x] `src/prepare_dataset.py` — after building the Tranco rank dict, save it to `datasets/tranco_map.pkl`
+- [x] `src/train_model.py` — after the train/test split, save `list(X.columns)` to `model/features.pkl`
+- [x] Create `src/features.py` — load lookup artifacts at import; expose `extract_features(url)` and `url_to_feature_row(url)`
+- [x] Create `src/predict.py` — load model and features artifact at import; expose `predict(url) -> dict`
+- [x] Create `src/cli.py` — single URL argument, print one-line verdict with confidence
+- [x] Create `src/streamlit.py` — URL input, result card (verdict + confidence), expandable feature breakdown

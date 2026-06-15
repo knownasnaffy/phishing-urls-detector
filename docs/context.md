@@ -31,3 +31,23 @@ Phishing URLs are ephemeral -- many are taken down before or shortly after appea
 
 **Do not drop data to fix class imbalance.**
 The dataset has roughly 100K legitimate vs 200K phishing samples. Downsampling the majority class discards real signal. Instead, all models use `class_weight='balanced'` to compensate during training.
+
+**Deployment model is RandomForest, not LogisticRegression.**
+On the combined PhiUSIIL + PhishTank dataset, RandomForest achieves F1 0.9510 vs LogisticRegression's 0.8939 — a ~6-point gap that justifies the larger model size (235 MB). LogisticRegression remains the better choice only on the old PhiUSIIL-only dataset where all models score near-perfect.
+
+## Inference / UI Architecture
+
+**Save Tranco rank dict as `datasets/tranco_map.pkl` during dataset preparation.**
+Reloading the 1M-row CSV at every inference startup adds unnecessary latency. A joblib pickle of the `{domain: rank}` dict loads in milliseconds.
+
+**Save feature column order as `model/features.pkl` during training.**
+`train_model.py` trains on `X = df.drop(columns=["label"])`, which inherits column order from `features.csv`. Inference must reproduce this exact order. Saving `list(X.columns)` after the split and reindexing in `features.py` guarantees alignment regardless of dict insertion order.
+
+**Shared prediction logic lives in `src/predict.py`.**
+Both `src/cli.py` and `src/streamlit.py` call a single `predict(url) -> dict` function rather than duplicating model loading and feature pipeline logic. The return value includes `label`, `confidence` (predict_proba of predicted class), and `features` (the extracted feature dict for display).
+
+**Do not expose raw `predict_proba` values directly in UIs.**
+Show confidence as the probability of the predicted class (e.g. "99.1% confidence it's phishing"), not the raw `[p_legit, p_phish]` array. This is less ambiguous for users.
+
+**Two UI entry points, both in `src/`.**
+`src/cli.py` for terminal use (one URL argument, one-line output). `src/streamlit.py` for the GUI (single-column, result card with expandable feature breakdown). No separate package structure needed given the project scope.

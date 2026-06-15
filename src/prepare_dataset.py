@@ -6,15 +6,17 @@ import os
 from collections import Counter
 from urllib.parse import urlparse
 
+import joblib
 import pandas as pd
 
 # ── Paths ────────────────────────────────────────────────────────────────────
-DATASET_CSV  = "datasets/dataset.csv"
-PHISHING_CSV = "datasets/phishing.csv"
-TRANCO_CSV   = "datasets/legitimate.csv"
-TLD_PROBS    = "datasets/tld_probs.csv"
-CHAR_PROBS   = "datasets/char_probs.csv"
-FEATURES_CSV = "datasets/features.csv"
+DATASET_CSV   = "datasets/dataset.csv"
+PHISHING_CSV  = "datasets/phishing.csv"
+TRANCO_CSV    = "datasets/legitimate.csv"
+TLD_PROBS     = "datasets/tld_probs.csv"
+CHAR_PROBS    = "datasets/char_probs.csv"
+FEATURES_CSV  = "datasets/features.csv"
+TRANCO_MAP    = "datasets/tranco_map.pkl"
 
 # ── Helpers ───────────────────────────────────────────────────────────────────
 _IP_RE  = re.compile(r"^\d{1,3}(\.\d{1,3}){3}$")
@@ -129,6 +131,8 @@ print("Loading Tranco list …")
 tranco = pd.read_csv(TRANCO_CSV, header=None, names=["rank", "domain"],
                      usecols=["rank", "domain"])
 tranco_map = dict(zip(tranco["domain"].str.lower(), tranco["rank"]))
+joblib.dump(tranco_map, TRANCO_MAP)
+print(f"  Saved {TRANCO_MAP}  ({len(tranco_map):,} entries)")
 
 
 def top_domain_rank(hostname: str) -> int:

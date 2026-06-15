@@ -1,32 +1,52 @@
 # Implementation Plan
 
-## Phase 1: Dataset Preparation (`src/prepare_dataset.py`)
+## ✅ Completed
 
-Extract raw URLs from their sources and produce a single feature matrix ready for training.
+Phases 1–4 (dataset preparation, training, benchmarking, model selection) are done.
+Deployment model: **RandomForest** (`model/model.pkl`). See `README.md` for benchmark results.
 
-1. Load legitimate URLs from PhiUSIIL (`datasets/dataset.csv`, `label=0` rows, `URL` column).
-2. Load phishing URLs by combining PhiUSIIL (`label=1` rows) and PhishTank (`datasets/phishing.csv`, `url` column). Deduplicate by URL string.
-3. Extract URL-only features from every URL (see `docs/concept.md` for the full feature list).
-4. For statistically-derived features (`TLDLegitimateProb`, `URLCharProb`), compute lookup tables from the legitimate training URLs and save them to `datasets/tld_probs.csv` and `datasets/char_probs.csv` so reruns skip recomputation.
-5. Load the Tranco list (`datasets/legitimate.csv`) into memory as a rank lookup and compute `TopDomainRank` for every URL.
-6. Write the final feature matrix with a `label` column to `datasets/features.csv`.
+---
 
-## Phase 2: Model Training (`src/train_model.py`)
+## Phase 5: Inference Layer
 
-Train the primary deployment model and save it.
+### 5.1 Update `src/prepare_dataset.py`
 
-1. Load `datasets/features.csv`, split 80/20 train/test with stratification.
-2. Train a `LogisticRegression` pipeline (StandardScaler + classifier, `class_weight='balanced'`).
-3. Print metrics and save the model to `model/model.pkl`.
+- After building the Tranco rank dict, save it to `datasets/tranco_map.pkl` (joblib) so inference doesn't reload the 1M-row CSV.
 
-## Phase 3: Benchmarking (`src/test_models.py`)
+### 5.2 Update `src/train_model.py`
 
-Compare all four candidate models on the same split.
+- After the train/test split, save `list(X.columns)` to `model/features.pkl` so inference can reindex feature dicts to the exact column order the model was trained on.
 
-1. Use the same train/test split as Phase 2 (fixed `random_state`).
-2. Train and evaluate LogisticRegression, RandomForest, ExtraTrees, and GradientBoosting -- all with `class_weight='balanced'`.
-3. Save a benchmark CSV to `benchmarks/` with accuracy, precision, recall, F1, train time, predict time, and model file size.
+### 5.3 Create `src/features.py`
 
-## Phase 4: Evaluation
+Extract reusable inference logic from `prepare_dataset.py`:
 
-Review the benchmark results and decide on the production model. Update `README.md` with the new results. If any model significantly outperforms LogisticRegression, revisit the deployment choice from `docs/concept.md`.
+- Load lookup artifacts once at import time: `datasets/tld_probs.csv`, `datasets/char_probs.csv`, `datasets/tranco_map.pkl`.
+- Expose `extract_features(url: str) -> dict` (the URL-string parsing logic).
+- Expose `url_to_feature_row(url: str) -> pd.DataFrame` — applies lookup tables and Tranco rank, returns a single-row DataFrame with columns in the order from `model/features.pkl`.
+
+### 5.4 Create `src/predict.py`
+
+Shared prediction helper used by both UIs:
+
+- Load `model/model.pkl` and `model/features.pkl` once at import.
+- Expose a single function: `predict(url: str) -> dict` returning:
+  ```python
+  {"label": "Phishing" | "Legitimate", "confidence": float, "features": dict}
+  ```
+  `confidence` is `predict_proba` probability of the predicted class (0–1).
+
+### 5.5 Create `src/cli.py`
+
+- Accept one URL as a CLI argument.
+- Call `predict(url)`, print a one-line result:
+  ```
+  ✓ Legitimate  (confidence: 97.3%)
+  ✗ Phishing    (confidence: 99.1%)
+  ```
+
+### 5.6 Create `src/streamlit.py`
+
+- Single-column layout: URL text input → "Check" button → result card.
+- Result card shows verdict (large text, green/red) and confidence.
+- Expandable section shows the 22 extracted features.
