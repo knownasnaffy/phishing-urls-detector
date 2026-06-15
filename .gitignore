@@ -1,3 +1,4 @@
+model/*.pkl
 model/test
 __pycache__/
 datasets/features.csv

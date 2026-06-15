@@ -25,6 +25,6 @@
 
 ## Phase 4: Evaluation
 
-- [ ] Review benchmark CSV and compare models
-- [ ] Confirm LogisticRegression as deployment model, or document reason for switching
-- [ ] Update `README.md` with new benchmark tables and dataset composition notes
+- [x] Review benchmark CSV and compare models
+- [x] Confirm LogisticRegression as deployment model, or document reason for switching
+- [x] Update `README.md` with new benchmark tables and dataset composition notes
