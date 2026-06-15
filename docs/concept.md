@@ -57,10 +57,17 @@ Derived by stripping out the webpage columns and `URLSimilarityIndex` (requires 
 | `IsHTTPS` | 1 if scheme is `https`, 0 otherwise |
 | `CharContinuationRate` | Ratio of max run-length of any single character to URLLength |
 | `TLDLegitimateProb` | Probability score of the TLD being benign (precomputed lookup table from training data) |
-| `URLCharProb` | Average per-character probability based on character frequency in legitimate URLs |
+| `URLCharFreqScore` | Average per-character frequency score based on character distribution in legitimate hostnames (scoped to hostname only — path UUIDs/slugs would distort the signal) |
 | `TopDomainRank` | Rank of the domain in the Tranco top-1M list; 0 if not present |
+| `DomainShannonEntropy` | Shannon entropy of the hostname string — measures randomness in the domain; high values indicate randomly-generated or DGA domains |
+| `PathShannonEntropy` | Shannon entropy of the URL path — measured separately from the domain so that legitimate random-looking paths (UUIDs, session IDs) don't penalise clean domains |
+| `NoOfHyphensInDomain` | Count of hyphens in the domain (hostname) only, not the path — classic signal for `secure-login-paypal.com` style domains |
+| `NoOfDotsInURL` | Total dot count in the full URL — captures subdomain abuse and obfuscated IPs |
+| `DomainHasDigit` | 1 if the domain label contains a digit, 0 otherwise — catches typosquatting like `g00gle.com`, `paypa1.com` |
+| `PathDepth` | Number of path segments (slash-separated components in the URL path) |
+| `TLDIsFreeAbuse` | 1 if TLD is one of the Freenom free-abuse TLDs (`.tk`, `.ml`, `.ga`, `.cf`, `.gq`), 0 otherwise |
 
-Note: `TLD` (the raw TLD string) is dropped in favour of `TLDLegitimateProb` to avoid high-cardinality categorical encoding. `URLSimilarityIndex` is excluded entirely since it requires comparing against a reference corpus at inference time.
+`TLDLegitimateProb` and `URLCharFreqScore` are precomputed from the legitimate training split and saved to `datasets/tld_probs.csv` and `datasets/char_probs.csv`. `URLCharFreqScore` is computed over hostnames only — the char frequency table is built from legitimate hostnames, not full URLs.
 
 ---
 
@@ -71,7 +78,7 @@ Note: `TLD` (the raw TLD string) is dropped in favour of `TLDLegitimateProb` to 
 - Load PhiUSIIL `datasets/dataset.csv`, use `URL` column. Label=0 rows → legitimate, label=1 rows → phishing.
 - Load PhishTank `datasets/phishing.csv`, use `url` column → phishing. Deduplicate against PhiUSIIL phishing set.
 - Extract the features listed above from every URL.
-- Compute `TLDLegitimateProb` and `URLCharProb` lookup tables from legitimate URLs; save to `datasets/tld_probs.csv` and `datasets/char_probs.csv`.
+- Compute `TLDLegitimateProb` and `URLCharFreqScore` lookup tables from legitimate URLs; save to `datasets/tld_probs.csv` and `datasets/char_probs.csv`.
 - Load Tranco list (`datasets/legitimate.csv`) as a rank lookup; save compact dict to `datasets/tranco_map.pkl`.
 - Output: `datasets/features.csv` with one row per URL and a `label` column.
 
@@ -109,7 +116,7 @@ Note: `TLD` (the raw TLD string) is dropped in favour of `TLDLegitimateProb` to 
 ### Step 7: `src/streamlit.py`
 
 - Single-column layout: URL input → "Check" button → result card (verdict + confidence).
-- Expandable section shows the 22 extracted features.
+- Expandable section shows the 28 extracted features.
 
 ---
 

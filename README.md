@@ -19,9 +19,9 @@ The Tranco top-1M list (`datasets/legitimate.csv`) is used only as a domain rank
 
 All features are derived from the URL string only:
 
-`URLLength`, `DomainLength`, `IsDomainIP`, `TLDLength`, `NoOfSubDomain`, `HasObfuscation`, `NoOfObfuscatedChar`, `ObfuscationRatio`, `NoOfLettersInURL`, `LetterRatioInURL`, `NoOfDegitsInURL`, `DegitRatioInURL`, `NoOfEqualsInURL`, `NoOfQMarkInURL`, `NoOfAmpersandInURL`, `NoOfOtherSpecialCharsInURL`, `SpacialCharRatioInURL`, `IsHTTPS`, `CharContinuationRate`, `TLDLegitimateProb`, `URLCharProb`, `TopDomainRank`
+`URLLength`, `DomainLength`, `IsDomainIP`, `TLDLength`, `NoOfSubDomain`, `HasObfuscation`, `NoOfObfuscatedChar`, `ObfuscationRatio`, `NoOfLettersInURL`, `LetterRatioInURL`, `NoOfDegitsInURL`, `DegitRatioInURL`, `NoOfEqualsInURL`, `NoOfQMarkInURL`, `NoOfAmpersandInURL`, `NoOfOtherSpecialCharsInURL`, `SpacialCharRatioInURL`, `IsHTTPS`, `CharContinuationRate`, `TLDLegitimateProb`, `URLCharFreqScore`, `TopDomainRank`, `DomainShannonEntropy`, `PathShannonEntropy`, `NoOfHyphensInDomain`, `NoOfDotsInURL`, `DomainHasDigit`, `PathDepth`, `TLDIsFreeAbuse`
 
-`TLDLegitimateProb` and `URLCharProb` are precomputed from the legitimate training split and saved to `datasets/tld_probs.csv` and `datasets/char_probs.csv`.
+`TLDLegitimateProb` and `URLCharFreqScore` are precomputed from the legitimate training split and saved to `datasets/tld_probs.csv` and `datasets/char_probs.csv`.
 
 ## Benchmark Results
 
@@ -29,18 +29,18 @@ Trained and evaluated on the combined dataset above. 80/20 stratified train/test
 
 | Model | Accuracy | Precision | Recall | F1 | Train Time (s) | Predict Time (s) | File Size (MB) |
 | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
-| RandomForest | 0.9357 | 0.9635 | 0.9387 | 0.9510 | 6.44 | 0.135 | 235.38 |
-| ExtraTrees | 0.9331 | 0.9525 | 0.9464 | 0.9495 | 5.17 | 0.255 | 584.37 |
-| GradientBoosting | 0.9144 | 0.9366 | 0.9343 | 0.9355 | 27.25 | 0.055 | 0.14 |
-| LogisticRegression | 0.8654 | 0.9389 | 0.8530 | 0.8939 | 1.40 | 0.040 | 0.003 |
+| RandomForest | 0.9383 | 0.9671 | 0.9391 | 0.9529 | 7.51 | 0.152 | 221.56 |
+| ExtraTrees | 0.9365 | 0.9557 | 0.9484 | 0.9520 | 6.48 | 0.260 | 554.99 |
+| GradientBoosting | 0.9176 | 0.9390 | 0.9369 | 0.9380 | 34.52 | 0.055 | 0.14 |
+| LogisticRegression | 0.8717 | 0.9423 | 0.8594 | 0.8990 | 1.12 | 0.043 | 0.003 |
 
 ### Model Selection
 
 RandomForest is the deployment model.
 
-On the previous PhiUSIIL-only dataset, all models scored above 0.9997 F1 and LogisticRegression was a reasonable choice given its speed and tiny size. The combined dataset is harder - raw URLs with class imbalance and more temporal diversity - and the gap between LogisticRegression and tree models is now about 6 F1 points (0.8939 vs 0.9510). That's a meaningful accuracy difference that justifies the larger model.
+On the previous PhiUSIIL-only dataset, all models scored above 0.9997 F1 and LogisticRegression was a reasonable choice given its speed and tiny size. The combined dataset is harder - raw URLs with class imbalance and more temporal diversity - and the gap between LogisticRegression and tree models is now about 6 F1 points (0.8990 vs 0.9529). That's a meaningful accuracy difference that justifies the larger model.
 
-Between RandomForest and ExtraTrees, RandomForest wins on accuracy and F1 while ExtraTrees takes over twice as much disk space (584 MB vs 235 MB) with slightly slower inference. GradientBoosting scores lower than both despite taking 4x longer to train.
+Between RandomForest and ExtraTrees, RandomForest wins on accuracy and F1 while ExtraTrees takes over twice as much disk space (554 MB vs 221 MB) with slightly slower inference. GradientBoosting scores lower than both despite taking 4x longer to train.
 
 | Rank | Model | Reason |
 | ---- | ----- | ------ |

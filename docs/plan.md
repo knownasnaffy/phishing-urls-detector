@@ -2,51 +2,41 @@
 
 ## ✅ Completed
 
-Phases 1–4 (dataset preparation, training, benchmarking, model selection) are done.
+Phases 1–5 (dataset preparation, training, benchmarking, model selection, inference layer) are done.
 Deployment model: **RandomForest** (`model/model.pkl`). See `README.md` for benchmark results.
 
 ---
 
-## Phase 5: Inference Layer
+## Phase 6: Feature Expansion (28 features)
 
-### 5.1 Update `src/prepare_dataset.py`
+Six new features are being added and one renamed. Both `src/prepare_dataset.py` and `src/features.py` must be updated together, then the dataset regenerated and models retrained.
 
-- After building the Tranco rank dict, save it to `datasets/tranco_map.pkl` (joblib) so inference doesn't reload the 1M-row CSV.
+### 6.1 Rename `URLCharProb` → `URLCharFreqScore` in `src/prepare_dataset.py` and `src/features.py`
 
-### 5.2 Update `src/train_model.py`
+The existing feature measures average character frequency in legitimate URLs — a score, not a probability.
 
-- After the train/test split, save `list(X.columns)` to `model/features.pkl` so inference can reindex feature dicts to the exact column order the model was trained on.
+### 6.2 Add 6 new features to `extract_features()` in both files
 
-### 5.3 Create `src/features.py`
+| Feature | Implementation note |
+|---------|---------------------|
+| `DomainShannonEntropy` | Shannon entropy over `hostname` characters only |
+| `PathShannonEntropy` | Shannon entropy over `p.path` characters only |
+| `NoOfHyphensInDomain` | `hostname.count("-")` |
+| `NoOfDotsInURL` | `url.count(".")` |
+| `DomainHasDigit` | `int(any(c.isdigit() for c in hostname))` |
+| `PathDepth` | `len([s for s in p.path.split("/") if s])` |
+| `TLDIsFreeAbuse` | `int(tld_str in {"tk", "ml", "ga", "cf", "gq"})` |
 
-Extract reusable inference logic from `prepare_dataset.py`:
+### 6.3 Regenerate `datasets/features.csv`
 
-- Load lookup artifacts once at import time: `datasets/tld_probs.csv`, `datasets/char_probs.csv`, `datasets/tranco_map.pkl`.
-- Expose `extract_features(url: str) -> dict` (the URL-string parsing logic).
-- Expose `url_to_feature_row(url: str) -> pd.DataFrame` — applies lookup tables and Tranco rank, returns a single-row DataFrame with columns in the order from `model/features.pkl`.
+Re-run `src/prepare_dataset.py`. The new CSV will have 29 columns (28 features + `label`).
 
-### 5.4 Create `src/predict.py`
+### 6.4 Retrain and re-benchmark
 
-Shared prediction helper used by both UIs:
+- Run `src/train_model.py` to update `model/model.pkl` and `model/features.pkl`.
+- Run `src/test_models.py` to produce a new benchmark CSV in `benchmarks/`.
+- Update `README.md` with new benchmark results.
 
-- Load `model/model.pkl` and `model/features.pkl` once at import.
-- Expose a single function: `predict(url: str) -> dict` returning:
-  ```python
-  {"label": "Phishing" | "Legitimate", "confidence": float, "features": dict}
-  ```
-  `confidence` is `predict_proba` probability of the predicted class (0–1).
+### 6.5 Update `src/streamlit.py`
 
-### 5.5 Create `src/cli.py`
-
-- Accept one URL as a CLI argument.
-- Call `predict(url)`, print a one-line result:
-  ```
-  ✓ Legitimate  (confidence: 97.3%)
-  ✗ Phishing    (confidence: 99.1%)
-  ```
-
-### 5.6 Create `src/streamlit.py`
-
-- Single-column layout: URL text input → "Check" button → result card.
-- Result card shows verdict (large text, green/red) and confidence.
-- Expandable section shows the 22 extracted features.
+Change the feature count reference from 22 to 28 in the expandable section label (if hardcoded).

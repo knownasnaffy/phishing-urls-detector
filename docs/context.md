@@ -24,6 +24,30 @@ High-cardinality categorical encoding of TLD would inflate the feature space and
 **Do not implement `DomainSimilarityIndex` (for now).**
 Computing meaningful similarity against a large reference corpus (e.g. Tranco 1M) requires either an approximate nearest-neighbor index (MinHash LSH via `datasketch`) or a brute-force edit distance pass -- both are heavyweight. The signal it provides (typosquatting detection) is partially covered by `TopDomainRank`, `DomainLength`, and `TLDLegitimateProb`. Can be revisited if benchmarks show a meaningful accuracy gap.
 
+**`URLCharProb` renamed to `URLCharFreqScore`.**
+The `Prob` suffix implied a true probability output, but the value is a frequency-derived score based on character distribution in legitimate training URLs. `FreqScore` more accurately reflects what it measures.
+
+**`URLShannonEntropy` split into `DomainShannonEntropy` + `PathShannonEntropy`. `URLCharFreqScore` scoped to hostname only.**
+Whole-URL entropy and char freq penalise URLs with random-looking paths (UUIDs, session IDs, slugs) even when the domain is clean — e.g. `chatgpt.com/c/saljkdjkd-asd-asddsa-dsad` was misclassified as phishing. Legitimate apps (ChatGPT, Notion, GitHub, Dropbox) routinely generate such paths. Splitting entropy lets the model learn that high path entropy on a known domain is normal, while high domain entropy is suspicious. Scoping `URLCharFreqScore` to hostname ensures the char frequency signal reflects domain-level patterns, not path noise. The char frequency table in `datasets/char_probs.csv` is now built from legitimate hostnames rather than full URLs.
+
+**Do not add `HasAtSymbol`.**
+The `@` trick in URLs is very old; modern browsers display a warning for it and modern phishing campaigns rarely use it. Low occurrence rate means it provides negligible signal.
+
+**Do not add `HasDoubleSlash`.**
+Intended to catch redirect tricks like `http://legit.com//redirect?url=evil.com`. Weak signal in practice and not captured by existing features (slashes are in the exclusion set for `NoOfOtherSpecialCharsInURL`). Not worth the marginal gain.
+
+**Do not add `SuspiciousKeywordScore` (login, verify, account, etc.).**
+Training data bias makes this unreliable. The legitimate set comes from PhiUSIIL URLs which are not full-path crawled URLs — they mostly lack path segments like `/login` or `/account`. The phishing set contains them abundantly. The feature would be measuring "has a path" more than "is phishing", producing a heavily biased signal that would not generalize.
+
+**Do not add `QueryParamCount`.**
+Redundant with `NoOfAmpersandInURL`, which already counts `&` characters — a direct proxy for query parameter count. Legitimate analytics and tracking URLs also routinely carry 10+ parameters, reducing signal quality. No marginal value over the existing feature.
+
+**Do not add `PathLength`.**
+Path length is already partially captured by `URLLength` minus `DomainLength`. As a standalone feature it lacks discriminative power — legitimate sites can have long paths and phishing sites can have short ones.
+
+**Use `TLDIsFreeAbuse` instead of `TLDIsCountryCode`.**
+Country-code TLDs (`.in`, `.uk`, `.de`, etc.) are used legitimately by millions of websites and are not a reliable phishing signal. The real signal is a small set of Freenom free TLDs (`.tk`, `.ml`, `.ga`, `.cf`, `.gq`) that have historically been offered at no cost and are massively abused for phishing campaigns. A binary flag for exactly this set is precise and defensible.
+
 ## Architecture
 
 **Do not add an `--extended` mode with webpage or WHOIS features.**

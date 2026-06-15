@@ -1,6 +1,8 @@
 """Inference feature extraction. Loads lookup artifacts once at import."""
 
+import math
 import re
+from collections import Counter
 from urllib.parse import urlparse
 
 import joblib
@@ -63,6 +65,13 @@ def extract_features(url: str) -> dict:
     tld_str = _tld(hostname)
     n_sub   = max(0, hostname.count(".") - 1)
 
+    def _shannon(s: str) -> float:
+        if not s:
+            return 0.0
+        counts = Counter(s)
+        l = len(s)
+        return -sum((c / l) * math.log2(c / l) for c in counts.values())
+
     return {
         "URLLength":                  url_len,
         "DomainLength":               len(hostname),
@@ -84,8 +93,15 @@ def extract_features(url: str) -> dict:
         "IsHTTPS":                    int(p.scheme == "https"),
         "CharContinuationRate":       max_run / url_len if url_len else 0,
         "TLDLegitimateProb":          _tld_prob_map.get(tld_str, 0.0),
-        "URLCharProb":                sum(_char_prob_map.get(c, 0.0) for c in url) / url_len if url_len else 0.0,
+        "URLCharFreqScore":           sum(_char_prob_map.get(c, 0.0) for c in hostname) / len(hostname) if hostname else 0.0,
         "TopDomainRank":              _top_domain_rank(hostname),
+        "DomainShannonEntropy":       _shannon(hostname),
+        "PathShannonEntropy":         _shannon(p.path),
+        "NoOfHyphensInDomain":        hostname.count("-"),
+        "NoOfDotsInURL":              url.count("."),
+        "DomainHasDigit":             int(any(c.isdigit() for c in hostname)),
+        "PathDepth":                  len([s for s in p.path.split("/") if s]),
+        "TLDIsFreeAbuse":             int(tld_str in {"tk", "ml", "ga", "cf", "gq"}),
     }
 
 

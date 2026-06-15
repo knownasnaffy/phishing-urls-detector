@@ -61,6 +61,13 @@ def extract_features(url: str) -> dict:
     dots_in_host = hostname.count(".")
     n_sub = max(0, dots_in_host - 1)
 
+    def _shannon(s: str) -> float:
+        if not s:
+            return 0.0
+        counts = Counter(s)
+        l = len(s)
+        return -sum((c / l) * math.log2(c / l) for c in counts.values())
+
     return {
         "URLLength":               url_len,
         "DomainLength":            len(hostname),
@@ -81,6 +88,13 @@ def extract_features(url: str) -> dict:
         "SpacialCharRatioInURL":   specials / url_len if url_len else 0,
         "IsHTTPS":                 int(p.scheme == "https"),
         "CharContinuationRate":    ccr,
+        "DomainShannonEntropy":    _shannon(hostname),
+        "PathShannonEntropy":      _shannon(p.path),
+        "NoOfHyphensInDomain":     hostname.count("-"),
+        "NoOfDotsInURL":           full.count("."),
+        "DomainHasDigit":          int(any(c.isdigit() for c in hostname)),
+        "PathDepth":               len([s for s in p.path.split("/") if s]),
+        "TLDIsFreeAbuse":          int(tld_str in {"tk", "ml", "ga", "cf", "gq"}),
         "_tld":                    tld_str,   # temp, removed before output
         "_hostname":               hostname,  # temp
     }
@@ -111,7 +125,7 @@ else:
     for url in legit_urls:
         feats = extract_features(url)
         tld_counter[feats["_tld"]] += 1
-        char_counter.update(url)
+        char_counter.update(feats["_hostname"])
 
     total_tld  = sum(tld_counter.values())
     total_char = sum(char_counter.values())
@@ -156,8 +170,7 @@ def build_row(url: str, label: int) -> dict:
 
     f["TLDLegitimateProb"] = tld_prob_map.get(tld, 0.0)
 
-    char_probs = [char_prob_map.get(c, 0.0) for c in url]
-    f["URLCharProb"] = sum(char_probs) / len(char_probs) if char_probs else 0.0
+    f["URLCharFreqScore"] = sum(char_prob_map.get(c, 0.0) for c in hostname) / len(hostname) if hostname else 0.0
 
     f["TopDomainRank"] = top_domain_rank(hostname)
     f["label"] = label
