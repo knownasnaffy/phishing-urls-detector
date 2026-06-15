@@ -18,10 +18,10 @@
 
 ## Phase 3: Benchmarking (`src/test_models.py`)
 
-- [ ] Reuse the same train/test split (same `random_state`) as Phase 2
-- [ ] Train and evaluate LogisticRegression, RandomForest, ExtraTrees, and GradientBoosting (all with `class_weight='balanced'`)
-- [ ] Record accuracy, precision, recall, F1, train time, predict time, and model file size
-- [ ] Save benchmark results to `benchmarks/`
+- [x] Reuse the same train/test split (same `random_state`) as Phase 2
+- [x] Train and evaluate LogisticRegression, RandomForest, ExtraTrees, and GradientBoosting (all with `class_weight='balanced'`)
+- [x] Record accuracy, precision, recall, F1, train time, predict time, and model file size
+- [x] Save benchmark results to `benchmarks/`
 
 ## Phase 4: Evaluation
 
